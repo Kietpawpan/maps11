@@ -296,6 +296,32 @@ boundaryGeoJSON.features.<span class="function">forEach</span>(f =&gt; f.bbox = 
 <span class="keyword">const</span> leftPt = turf.<span class="function">destination</span>([lon, lat], distance, leftBearing, {units: <span class="string">'kilometers'</span>}).geometry.coordinates;
 <span class="keyword">const</span> rightPt = turf.<span class="function">destination</span>([lon, lat], distance, rightBearing, {units: <span class="string">'kilometers'</span>}).geometry.coordinates;</code></pre>
 
+        <h2><span class="step-badge">8</span>ระบบเบื้องหลังและ API (Backend &amp; API) ด้วย Google Apps Script</h2>
+        <p>ระบบใช้ Google Apps Script (GAS) ทำหน้าที่เป็นเซิร์ฟเวอร์แบบไร้เซิร์ฟเวอร์ (Serverless) เพื่อจัดการข้อมูลก่อนส่งให้แอปพลิเคชันหน้าบ้านแสดงผล</p>
+        <ul class="custom-list">
+            <li><strong>ดึงข้อมูลดาวเทียม NASA:</strong> เป็นตัวกลางเชื่อมต่อ API ของ NASA FIRMS เพื่อนำข้อมูลจุดความร้อนมาแปลงเป็น JSON ที่ระบบหน้าบ้านอ่านและนำไปสร้างพิกัดได้รวดเร็วขึ้น</li>
+            <li><strong>ฐานข้อมูลสถานที่กำจัดขยะ:</strong> เชื่อมต่อกับ Google Sheets ที่ใช้เก็บข้อมูลบ่อขยะในพื้นที่เพื่อแปลงข้อมูลพิกัดและสถานะเป็น API ส่งกลับมาวาดเป็นหมุดบนแผนที่</li>
+            <li><strong>ระบบซิงค์ข้อมูลฉุกเฉิน (Force Sync):</strong> รับคำสั่งจากหน้าเว็บเพื่อสั่งให้เซิร์ฟเวอร์ดึงข้อมูลจุดความร้อนชุดใหม่ล่าสุดจากอวกาศทันทีโดยไม่ต้องรอรอบเวลาการประมวลผลปกติ</li>
+        </ul>
+
+        <pre><code><span class="comment">// ตัวอย่างการเรียกใช้ GAS เป็น Backend API ภายในระบบ</span>
+<span class="keyword">const</span> gasWebappUrl = <span class="string">'https://script.google.com/macros/s/.../exec'</span>;
+<span class="keyword">const</span> wasteGasUrl = <span class="string">'https://script.google.com/macros/s/.../exec'</span>;
+
+<span class="comment">// การส่งพารามิเตอร์เพื่อดึงข้อมูลบ่อขยะจาก Google Sheets</span>
+<span class="function">fetch</span>(wasteGasUrl)
+    .<span class="function">then</span>(res =&gt; res.<span class="function">json</span>())
+    .<span class="function">then</span>(data =&gt; {
+        <span class="comment">// นำข้อมูลบ่อขยะที่ได้ไปสร้างหมุดบนแผนที่หน้าบ้าน</span>
+    });
+
+<span class="comment">// การส่งคำสั่งเพื่อบังคับอัปเดตดาวเทียม NASA ทันที</span>
+<span class="function">fetch</span>(gasWebappUrl + <span class="string">"?action=force_sync_nasa"</span>)
+    .<span class="function">then</span>(res =&gt; res.<span class="function">json</span>())
+    .<span class="function">then</span>(data =&gt; {
+        <span class="comment">// โหลดข้อมูลชุดใหม่ลงบนแผนที่โดยอัตโนมัติ</span>
+    });</code></pre>
+
     </div>
 </body>
 </html>
