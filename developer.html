@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAPS 11 - Developer Guide</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #334155;
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        h1 {
+            color: #4a148c;
+            border-bottom: 3px solid #e9d5ff;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        h2 {
+            color: #2563eb;
+            margin-top: 40px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+        }
+        h3 {
+            color: #059669;
+            margin-top: 25px;
+        }
+        p {
+            margin-bottom: 15px;
+        }
+        ul {
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            background: #e0e7ff;
+            color: #3730a3;
+            margin-right: 5px;
+        }
+        pre {
+            background-color: #1e293b;
+            color: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f1f5f9;
+            color: #334155;
+        }
+        .highlight {
+            background-color: #fef08a;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>คู่มือนักพัฒนา (Developer Guide) <br>MAPS 11</h1>
+    <p>เอกสารฉบับนี้จัดทำขึ้นเพื่ออธิบายสถาปัตยกรรมระบบ โครงสร้างโค้ด และหลักการทำงานของแอปพลิเคชัน MAPS 11 (Management of Air Pollution Sector 11) เพื่อให้ทีมนักพัฒนาของ สคพ.11 สามารถนำไปใช้เป็นแนวทางในการบำรุงรักษาและพัฒนาฟีเจอร์เพิ่มเติมในอนาคต</p>
+
+    <h2>1. สถาปัตยกรรมระบบ (System Architecture)</h2>
+    <p>MAPS 11 เป็นเว็บแอปพลิเคชันประเภท Single Page Application (SPA) ที่ทำงานบนฝั่งไคลเอนต์ (Client-side) เป็นหลัก อาศัยการดึงข้อมูลจาก API ภายนอกมาแสดงผลบนแผนที่ โดยไม่มีระบบฐานข้อมูลในตัว แต่ใช้ Google Apps Script (GAS) เป็นตัวกลางในการดึงข้อมูล</p>
+    
+    <h3>ไลบรารีหลักที่ใช้งาน (Core Dependencies)</h3>
+    <ul>
+        <li><span class="badge">Leaflet.js</span> ไลบรารีหลักสำหรับสร้างและควบคุมแผนที่แบบ Interactive</li>
+        <li><span class="badge">Leaflet.markercluster</span> สำหรับจัดกลุ่มจุดความร้อนที่อยู่ใกล้กัน (Cluster) เพื่อลดความหนาแน่นบนหน้าจอ</li>
+        <li><span class="badge">Turf.js</span> ไลบรารีสำหรับวิเคราะห์ข้อมูลเชิงพื้นที่ (Spatial Analysis) เช่น การวัดระยะทาง การสร้างกรวยควัน การตรวจสอบจุดในโพลีกอน</li>
+        <li><span class="badge">XLSX.js (SheetJS)</span> สำหรับสร้างและดาวน์โหลดไฟล์ Excel รายงานจุดความร้อน</li>
+        <li><span class="badge">CryptoJS</span> สำหรับเข้ารหัสรหัสผ่านด้วย SHA3 ก่อนอนุญาตให้ดาวน์โหลดข้อมูล</li>
+    </ul>
+
+    <h2>2. โครงสร้างของส่วนแสดงผล (UI Components)</h2>
+    <p>ส่วนต่อประสานกับผู้ใช้เขียนด้วย HTML และ CSS ล้วน โดยแบ่งส่วนประกอบหลักดังนี้</p>
+    <ul>
+        <li><b>Control Panel:</b> แผงควบคุมด้านบน ประกอบด้วยสถานะการโหลดข้อมูล ตัวเลือกช่วงเวลา 24 ชม. หรือ 12 ชม. ช่องค้นหาบ่อขยะ และระบบปักหมุดจุดเกิดเหตุด่วน</li>
+        <li><b>Loading Overlay:</b> หน้าจอโหลดข้อมูลสีเข้มที่จะแสดงขึ้นมาบังแผนที่ขณะที่ระบบกำลังประมวลผลข้อมูลจาก NASA</li>
+        <li><b>Map Container:</b> พื้นที่แสดงแผนที่ <code>#map</code> ที่รองรับการคลิกเพื่อดูพิกัด</li>
+        <li><b>Dynamic Legend:</b> กล่องคำอธิบายสัญลักษณ์มุมซ้ายล่างที่จะปรับเปลี่ยนเนื้อหาอัตโนมัติตามเลเยอร์ที่ผู้ใช้เปิดใช้งาน</li>
+        <li><b>Toast Container:</b> ระบบแจ้งเตือนมุมขวาบนที่ใช้ฟังก์ชัน <code>showToast()</code> ในการแสดงสถานะต่างๆ</li>
+    </ul>
+
+    <h2>3. การเชื่อมต่อข้อมูล (API Integrations)</h2>
+    <table>
+        <tr>
+            <th>ข้อมูล</th>
+            <th>แหล่งที่มา (Source)</th>
+            <th>การนำไปใช้งาน</th>
+        </tr>
+        <tr>
+            <td>จุดความร้อน (Hotspots)</td>
+            <td>Google Apps Script (ดึงจาก NASA FIRMS)</td>
+            <td>พล็อตจุดลงบนแผนที่และวิเคราะห์ความเสี่ยงไฟไหม้บ่อขยะ</td>
+        </tr>
+        <tr>
+            <td>สถานที่กำจัดขยะ (Landfills)</td>
+            <td>Google Apps Script (จาก Google Sheets)</td>
+            <td>สร้างหมุดรูปถังขยะและวงกลมรัศมีบนแผนที่</td>
+        </tr>
+        <tr>
+            <td>ข้อมูลขอบเขตจังหวัด</td>
+            <td>GitHub (ไฟล์ GeoJSON)</td>
+            <td>วาดเส้นขอบเขต 4 จังหวัดและใช้กรองข้อมูลจุดความร้อน</td>
+        </tr>
+        <tr>
+            <td>แปลงพิกัดเป็นที่อยู่ (Reverse Geocoding)</td>
+            <td>Longdo Map API</td>
+            <td>ค้นหาตำบล อำเภอ จังหวัด จากพิกัด Lat/Lon</td>
+        </tr>
+        <tr>
+            <td>ข้อมูลสภาพอากาศ (Wind Data)</td>
+            <td>Open-Meteo API</td>
+            <td>ดึงความเร็วและทิศทางลมเพื่อจำลองทิศทางควันไฟ</td>
+        </tr>
+    </table>
+
+    <h2>4. คำอธิบายฟังก์ชันหลัก (Core Functions)</h2>
+
+    <h3>4.1. การประมวลผลจุดความร้อน (Hotspot Processing)</h3>
+    <p>ฟังก์ชัน <code>fetchNasaData()</code> ทำหน้าที่ดึงข้อมูลจาก GAS ระบบจะใช้วิธีแบ่งการประมวลผลเป็นชุดย่อย (Chunk Processing) ผ่าน <code>setTimeout</code> เพื่อป้องกันไม่ให้เบราว์เซอร์ค้างหากมีจุดความร้อนจำนวนมาก</p>
+    <pre><code>function processHotspotChunk() {
+    let end = Math.min(i + chunkSize, data.points.length);
+    for (; i < end; i++) {
+        // ...ประมวลผลพิกัด แปลงเวลา
+        // ใช้ Turf.js ตรวจสอบว่าพิกัดอยู่ในโพลีกอน 4 จังหวัดหรือไม่
+        if (turf.booleanPointInPolygon(turfPt, b)) {
+            // ...เก็บข้อมูลเข้า globalCoreFeatures
+        }
+    }
+    // ...ถ้ายังไม่หมดให้เรียกตัวเองใหม่
+}</code></pre>
+
+    <h3>4.2. การวิเคราะห์ความเสี่ยงไฟไหม้บ่อขยะ (Risk Analysis)</h3>
+    <p>ฟังก์ชัน <code>calculateWasteFireRisk()</code> จะทำงานทุกครั้งที่มีการอัปเดตจุดความร้อน ระบบจะใช้ Turf.js วัดระยะทางระหว่างจุดความร้อนทุกจุดกับบ่อขยะทุกแห่ง หากมีระยะห่างน้อยกว่าหรือเท่ากับ <code>RISK_RADIUS_KM</code> (0.5 กม.) ระบบจะสร้างวงกลมแจ้งเตือนสีแดงกระพริบรอบบ่อขยะนั้น</p>
+    <pre><code>let distance = turf.distance(sitePt, hotPt, {units: 'kilometers'});
+if (distance <= RISK_RADIUS_KM) {
+    nearHotspots++;
+    // ตรวจพบความเสี่ยง
+}</code></pre>
+
+    <h3>4.3. การจำลองทิศทางควันไฟ (Plume Modeling)</h3>
+    <p>เมื่อมีการปักหมุดจุดเกิดเหตุ ฟังก์ชัน <code>drawPlumeAndCalculateRisk()</code> จะดึงข้อมูลลมจาก Open-Meteo มาคำนวณทิศทางที่ควันจะลอยไป โดยบวกเพิ่ม 180 องศาจากทิศที่ลมพัดมา จากนั้นใช้ Turf.js คำนวณจุดปลายทาง (Destination) เพื่อสร้างรูปโพลีกอนกรวยควันระยะ 5 กิโลเมตร มุมกระจาย 40 องศา</p>
+    <pre><code>const smokeAngle = (dir + 180) % 360; // ทิศที่ควันลอยไป
+const leftPt = turf.destination([lon, lat], distance, leftBearing, {units: 'kilometers'});
+const rightPt = turf.destination([lon, lat], distance, rightBearing, {units: 'kilometers'});
+// นำจุดที่ได้ไปวาด L.polygon()</code></pre>
+
+    <h3>4.4. การป้องกันข้อมูลและ Export Excel</h3>
+    <p>ก่อนดาวน์โหลดไฟล์ ระบบจะบังคับให้กรอกรหัสผ่าน รหัสผ่านที่รับมาจะถูกนำไปแฮชด้วย SHA3 ผ่านไลบรารี CryptoJS จากนั้นนำไปเทียบกับค่า Hash ที่ฝังไว้ในโค้ด (Hardcoded Hash) หากตรงกันจึงจะสร้างไฟล์ Excel ด้วย SheetJS</p>
+    <pre><code>const userHash = CryptoJS.SHA3(cleanPassword, { outputLength: 512 }).toString();
+if (userHash !== TARGET_HASH) {
+    showToast("รหัสผ่านไม่ถูกต้อง", "error");
+    return;
+}</code></pre>
+
+    <h2>5. ข้อควรระวังและข้อจำกัด (Limitations & Considerations)</h2>
+    <ul>
+        <li><b>Longdo API Key:</b> คีย์ที่ฝังอยู่ในโค้ด <code>bce812933744d2530d26f0fabb0017cf</code> มีข้อจำกัดโควตาการเรียกใช้งานต่อวัน หากนำไปใช้งานหนักควรจดทะเบียน API Key ใหม่สำหรับหน่วยงาน</li>
+        <li><b>ความเร็วลม:</b> Open-Meteo อัปเดตข้อมูลทุกๆ ชั่วโมง อาจไม่ตรงกับสภาพลมจริง ณ วินาทีนั้นแบบเป๊ะๆ จึงมีฟังก์ชัน <code>ปรับทิศ</code> ให้เจ้าหน้าที่แก้ไของศาลมได้เองหน้างาน</li>
+        <li><b>ความปลอดภัยรหัสผ่าน:</b> การแฮชรหัสผ่านฝั่งไคลเอนต์เป็นเพียงการป้องกันระดับเบื้องต้น ผู้ที่มีความรู้ด้านโปรแกรมมิ่งสามารถแก้ไขโค้ดผ่าน Developer Tools เพื่อข้ามการตรวจสอบนี้ได้ หากข้อมูลมีความลับสูงมากควรย้ายการตรวจสอบรหัสผ่านไปไว้ที่ฝั่งเซิร์ฟเวอร์ (GAS)</li>
+    </ul>
+
+</div>
+
+</body>
+</html>
