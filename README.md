@@ -29,17 +29,6 @@
     *   **Open-Meteo API:** ดึงข้อมูลความเร็วและทิศทางลมปัจจุบัน
     *   **Google Apps Script (GAS):** ทำหน้าที่เป็น Backend API ดึงข้อมูลจุดความร้อน NASA FIRMS และฐานข้อมูลบ่อขยะจาก Google Sheets
 
-## 🚀 การติดตั้งและการใช้งาน (Setup & Usage)
-
-เนื่องจากระบบถูกเขียนแบบ Client-side อย่างสมบูรณ์แบบ คุณสามารถใช้งานได้ทันทีโดยไม่ต้องตั้งค่าเซิร์ฟเวอร์
-
-1.  โคลน Repository นี้ลงในเครื่องของคุณ
-    ```bash
-    git clone [https://github.com/your-username/maps11.git](https://github.com/your-username/maps11.git)
-    ```
-2.  เปิดไฟล์ `index.html` ด้วยเว็บเบราว์เซอร์ใดก็ได้ (แนะนำ Google Chrome หรือ Microsoft Edge)
-3.  สำหรับการนำไปใช้งานจริง สามารถนำไปโฮสต์บน **GitHub Pages** หรือ Web Hosting ทั่วไปได้ทันที
-
 ## 🔐 ข้อมูลสำหรับผู้พัฒนา (Developer Notes)
 
 *   **API Keys:** ในระบบมีการเรียกใช้ `longdoApiKey` ซึ่งถูกฝังไว้ในโค้ด หากนำไปพัฒนาต่อควรเปลี่ยนเป็น API Key ของหน่วยงานท่านเอง
