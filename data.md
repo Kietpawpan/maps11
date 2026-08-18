@@ -23,4 +23,4 @@ CryptoJS (4.1.1): สำหรับเข้ารหัส (SHA3) และต
 jQuery (3.7.1): สำหรับช่วยจัดการการทำงานของ JavaScript บางส่วน
 5. ลิงก์บริการเชื่อมโยงภายนอก
 Google Maps URL: มีการสร้างลิงก์อัตโนมัติภายในโค้ดเพื่อส่งผู้ใช้ไปยัง Google Maps (เช่น [https://www.google.com/maps/dir/](https://www.google.com/maps/dir/)... หรือ [https://www.google.com/maps/search/](https://www.google.com/maps/search/)...) สำหรับใช้นำทางไปยังจุดเกิดเหตุหรือสถานที่กำจัดขยะ
-<img src="https://kietpawpan.github.io/maps11/IMG_5981.jpeg></img>
+<img src="https://kietpawpan.github.io/maps11/IMG_5981.jpeg"></img>
