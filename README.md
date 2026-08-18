@@ -43,4 +43,4 @@
 
 ## 📕 เอกสารเชิงเทคนิค
  *  **Technical document:** [Key components](https://kietpawpan.github.io/maps11/technicalPaper) (อัลกอริทึมการทำงานของระบบ MAPS11)
- * **Developer Guide:** [Key components](https://kietpawpan.github.io/maps11/developer) (คู่มือนักพัฒนา MAPS11)
+ * **Developer Guide:** [Architecture](https://kietpawpan.github.io/maps11/developer) (คู่มือนักพัฒนา MAPS11)
