@@ -42,4 +42,4 @@
 กรมควบคุมมลพิษ กระทรวงทรัพยากรธรรมชาติและสิ่งแวดล้อม
 
 ## 📕 เอกสารเชิงเทคนิค
-  **Technical document:** [Leaflet.js](https://leafletjs.com/) (แผนที่เชิงโต้ตอบ)
+  **Technical document:** [Key components](https://kietpawpan.github.io/maps11/technicalPaper)(https://kietpawpan.github.io/maps11/technicalPaper)) (อัลกอริทึมการทำงานของระบบ MAPS11)
