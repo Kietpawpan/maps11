@@ -43,6 +43,11 @@
             display: flex;
             align-items: center;
         }
+        h3 {
+            color: var(--primary-color);
+            margin-top: 25px;
+            font-size: 18px;
+        }
         .step-badge {
             background-color: var(--secondary-color);
             color: white;
@@ -115,20 +120,46 @@
         <p>เอกสารฉบับนี้อธิบายชุดคำสั่งทางโปรแกรมมิ่งที่เป็นหัวใจสำคัญในการขับเคลื่อนระบบภูมิสารสนเทศเพื่อการเฝ้าระวังจุดความร้อนบริเวณสถานที่กำจัดขยะมูลฝอย</p>
 
         <h2><span class="step-badge">1</span>รวบรวมข้อมูล (Data Ingestion)</h2>
-        <p>ขั้นตอนนี้คือการดึงข้อมูลจุดความร้อนจากดาวเทียม Suomi NPP และ NOAA-20 ผ่านระบบ Middleware ที่ทำงานอยู่บน Google Apps Script (GAS)</p>
-        <pre><code><span class="comment">// ฟังก์ชันหลักที่ใช้ดึงข้อมูลจากระบบหลังบ้าน (GAS)</span>
-<span class="keyword">function</span> <span class="function">fetchNasaData</span>(reo11Bbox) {
-    <span class="comment">// แจ้งสถานะกำลังโหลด</span>
-    document.<span class="function">getElementById</span>(<span class="string">'loadingStatusText'</span>).innerText = <span class="string">`FETCHING HOTSPOTS FROM MAPS11 DATABASE...`</span>;
+        <p>ขั้นตอนนี้คือการดึงข้อมูลจุดความร้อนจากดาวเทียม Suomi NPP และ NOAA-20 ผ่านระบบ Middleware ที่ทำงานอยู่บน Google Apps Script (GAS) โดยเชื่อมต่อกับระบบ FIRMS ของ NASA ผ่าน Area API เพื่อจำกัดพื้นที่การค้นหา</p>
 
-    <span class="comment">// ยิง Request ไปยัง GAS Web App เพื่อดึงข้อมูลจุดความร้อน</span>
+        <h3>โครงสร้างการเรียกข้อมูลจาก NASA FIRMS API</h3>
+        <pre><code><span class="keyword">var</span> nasaUrl = <span class="string">'https://firms.modaps.eosdis.nasa.gov/api/area/csv/'</span> + nasaApiKey + <span class="string">'/VIIRS_SNPP_NRT/'</span> + bbox + <span class="string">'/2'</span>;</code></pre>
+
+        <ul class="custom-list">
+            <li><strong>nasaApiKey:</strong> รหัสยืนยันตัวตนสำหรับสิทธิ์การเข้าถึงข้อมูลซึ่งถูกเก็บซ่อนไว้อย่างปลอดภัยใน PropertiesService ของแพลตฟอร์มเพื่อป้องกันการรั่วไหล</li>
+            <li><strong>VIIRS_SNPP_NRT:</strong> แหล่งข้อมูลประเภท Near Real-Time จากเซนเซอร์ VIIRS บนดาวเทียม Suomi NPP ที่มีจุดเด่นเรื่องการอัปเดตข้อมูลที่รวดเร็วทันต่อเหตุการณ์</li>
+            <li><strong>bbox (Bounding Box):</strong> ชุดพิกัดขอบเขตพื้นที่ที่ต้องการดึงข้อมูลโดยระบบกำหนดค่าไว้ที่ <code>100.0 13.0 105.0 17.5</code> ซึ่งเป็นการสร้างกรอบสี่เหลี่ยมคลุมพื้นที่ภาคตะวันออกเฉียงเหนือตอนล่างเพื่อลดปริมาณข้อมูลที่ต้องดาวน์โหลด</li>
+            <li><strong>พารามิเตอร์เวลา (/2):</strong> กำหนดให้ NASA ส่งข้อมูลจุดความร้อนที่ตรวจพบในช่วง 2 วันที่ผ่านมาทั้งหมดกลับมาเพื่อนำมาประมวลผลต่อ</li>
+        </ul>
+
+        <h3>กระบวนการจัดการข้อมูลหลังได้รับจาก NASA</h3>
+        <ul class="custom-list">
+            <li><strong>แปลงไฟล์และสกัดข้อมูล:</strong> ข้อมูลที่ได้มาจะอยู่ในรูปแบบข้อความ CSV ระบบจึงแยกบรรทัดและคอลัมน์เพื่อสกัดเฉพาะค่าที่สำคัญได้แก่ละติจูด ลองจิจูด วันที่ เวลา และระดับความเชื่อมั่น</li>
+            <li><strong>คัดกรองตามเวลาจริง (24 ชั่วโมง):</strong> ระบบจะคำนวณเวลาปัจจุบันเปรียบเทียบกับเวลาดาวเทียมหากพบว่าจุดความร้อนเกิดขึ้นเกิน 24 ชั่วโมงจะถูกคัดทิ้งทันทีเพื่อให้ข้อมูลอัปเดตที่สุด</li>
+            <li><strong>คัดกรองตามขอบเขตรับผิดชอบ:</strong> นำพิกัดไปตรวจสอบกับรูปทรง GeoJSON เพื่อยืนยันว่าจุดนั้นตกลงในพื้นที่ 4 จังหวัดเป้าหมายอย่างแท้จริงก่อนบันทึกลงฐานข้อมูล</li>
+        </ul>
+
+        <pre><code><span class="comment">// ตัวอย่างการดึงข้อมูลและคัดกรองเบื้องต้นในฝั่ง GAS</span>
+<span class="keyword">function</span> <span class="function">fetchAndCacheNasaHotspots</span>() {
+    <span class="comment">// Bounding Box ครอบคลุมภาคตะวันออกเฉียงเหนือตอนล่าง</span>
+    <span class="keyword">var</span> bbox = <span class="string">'100.0,13.0,105.0,17.5'</span>; 
+    <span class="keyword">var</span> nasaUrl = <span class="string">'https://firms.modaps.eosdis.nasa.gov/api/area/csv/'</span> + nasaApiKey + <span class="string">'/VIIRS_SNPP_NRT/'</span> + bbox + <span class="string">'/2'</span>;
+    <span class="keyword">var</span> csvText = UrlFetchApp.<span class="function">fetch</span>(nasaUrl).<span class="function">getContentText</span>();
+
+    <span class="comment">// กระบวนการตัดกรองเวลา 24 ชั่วโมงย้อนหลัง</span>
+    <span class="keyword">var</span> now = <span class="keyword">new</span> Date().<span class="function">getTime</span>();
+    <span class="keyword">var</span> cutoff = now - (<span class="variable">24</span> * <span class="variable">60</span> * <span class="variable">60</span> * <span class="variable">1000</span>);
+    
+    <span class="comment">// ส่วนของโค้ดตรวจสอบพื้นที่ด้วย isPointInPolygon และบันทึกลง Google Sheets...</span>
+}
+
+<span class="comment">// ฟังก์ชันฝั่งหน้าเว็บที่รับข้อมูลที่ผ่านการจัดการแล้วจาก GAS มาแสดงผล</span>
+<span class="keyword">function</span> <span class="function">fetchNasaData</span>(reo11Bbox) {
+    document.<span class="function">getElementById</span>(<span class="string">'loadingStatusText'</span>).innerText = <span class="string">`FETCHING HOTSPOTS FROM MAPS11 DATABASE...`</span>;
     <span class="function">fetch</span>(gasWebappUrl + <span class="string">"?action=hotspots"</span>)
         .<span class="function">then</span>(res =&gt; res.<span class="function">json</span>())
         .<span class="function">then</span>(data =&gt; {
-            <span class="comment">// ได้ข้อมูล data.points มาประมวลผลต่อ</span>
-        })
-        .<span class="function">catch</span>(error =&gt; {
-            console.<span class="function">error</span>(<span class="string">'เกิดข้อผิดพลาดในการดึงข้อมูลจาก GAS'</span>, error);
+            <span class="comment">// ได้ข้อมูล data.points มาสร้างหมุดบนแผนที่</span>
         });
 }</code></pre>
 
@@ -244,9 +275,9 @@
         
         <ul class="custom-list">
             <li><strong>การจัดผังและซ้อนทับเลเยอร์:</strong> โค้ดมีการเรียกใช้คำสั่งควบคุมเลเยอร์เพื่อสร้างเมนูที่มุมขวาบนช่วยให้เจ้าหน้าที่สลับดูแผนที่ฐานแบบต่างๆ ได้อย่างอิสระทั้งแผนที่ถนน OpenStreetMap ภาพถ่ายดาวเทียม Esri และ Google Maps แบบไฮบริดรวมถึงสามารถเลือกเปิดปิดชั้นข้อมูลซ้อนทับต่างๆ เช่น จุดความร้อน NASA สถานที่กำจัดขยะ พื้นที่แจ้งเตือน และจุดเกิดเหตุด่วนได้ตามความต้องการใช้งานเฉพาะหน้า</li>
-            <li><strong>การจัดการจุดความร้อนจำนวนมาก:</strong> ระบบมีการเรียกใช้ปลั๊กอิน Leaflet.markercluster เพื่อรวบกลุ่มหมุดจุดความร้อนจากดาวเทียม NASA (Suomi-NPP และ NOAA-20) เข้าด้วยกันแบบอัตโนมัติเมื่อซูมแผนที่ออกและจะกระจายตัวออกเป็นรูปแบบใยแมงมุม (Spiderfy) เมื่อซูมเข้าใกล้พื้นที่เป้าหมายเทคนิคนี้ช่วยลดภาระการประมวลผลทำให้หน้าเว็บเบราว์เซอร์ไม่หน่วงและหน้าจอไม่รกตาเมื่อมีจุดความร้อนปรากฏขึ้นจำนวนมาก</li>
-            <li><strong>การวาดรัศมีและพื้นที่แจ้งเตือนภัย:</strong> โค้ดใช้คำสั่งวาดรูปทรงเรขาคณิตซ้อนทับลงบนแผนที่โดยตรงเช่นการใช้พิกัดจุดศูนย์กลางวาดวงกลมสีแดงแบบกระพริบ (Blinking Alert) ในรัศมี 500 เมตรรอบสถานที่กำจัดขยะมูลฝอยที่มีความเสี่ยงสูงรวมถึงการวาดรูปทรงหลายเหลี่ยมแบบโปร่งแสง (Polygon) คล้ายรูปทรงกรวยเพื่อจำลองพื้นที่รัศมี 5 กิโลเมตรที่ควันไฟอาจแพร่กระจายไปถึงโดยอิงตามพารามิเตอร์ทิศทางลมแบบเรียลไทม์</li>
-            <li><strong>การโต้ตอบผ่านหน้าต่างข้อมูล:</strong> เมื่อมีการคลิกที่หมุดจุดความร้อนหรือบ่อขยะระบบจะสั่งการให้ป๊อปอัป (Popup) แบบอินเทอร์แอกทีฟเด้งขึ้นมาแสดงผลลัพธ์จากการคำนวณเบื้องหลังทันทีซึ่งครอบคลุมทั้งข้อมูลพิกัดละติจูดลองจิจูดข้อมูลพิกัดที่อยู่ระดับตำบลความเร็วลมทิศทางลมไปจนถึงข้อความแจ้งเตือนชุมชนท้ายลมที่เสี่ยงได้รับผลกระทบพร้อมทั้งแทรกปุ่มคำสั่งสำหรับเปิดระบบนำทางไปยังจุดเกิดเหตุผ่าน Google Maps ไว้ในตัวป๊อปอัปด้วย</li>
+            <li><strong>การจัดการจุดความร้อนจำนวนมาก:</strong> ระบบมีการเรียกใช้ปลั๊กอิน Leaflet.markercluster เพื่อรวบกลุ่มหมุดจุดความร้อนจากดาวเทียม NASA เข้าด้วยกันแบบอัตโนมัติเมื่อซูมแผนที่ออกและจะกระจายตัวออกเป็นรูปแบบใยแมงมุมเมื่อซูมเข้าใกล้พื้นที่เป้าหมายเทคนิคนี้ช่วยลดภาระการประมวลผลทำให้หน้าเว็บเบราว์เซอร์ไม่หน่วง</li>
+            <li><strong>การวาดรัศมีและพื้นที่แจ้งเตือนภัย:</strong> โค้ดใช้คำสั่งวาดรูปทรงเรขาคณิตซ้อนทับลงบนแผนที่โดยตรงเช่นการใช้วงกลมสีแดงแบบกระพริบในรัศมี 500 เมตรรอบสถานที่กำจัดขยะมูลฝอยรวมถึงการวาดรูปทรงหลายเหลี่ยมแบบโปร่งแสงเพื่อจำลองพื้นที่รัศมี 5 กิโลเมตรที่ควันไฟอาจแพร่กระจายไปถึง</li>
+            <li><strong>การโต้ตอบผ่านหน้าต่างข้อมูล:</strong> เมื่อมีการคลิกที่หมุดจุดความร้อนระบบจะสั่งให้ป๊อปอัปเด้งขึ้นมาแสดงผลลัพธ์จากการคำนวณเบื้องหลังทันทีซึ่งครอบคลุมทั้งข้อมูลพิกัดละติจูดลองจิจูดระดับตำบลความเร็วลมและข้อความแจ้งเตือนพร้อมปุ่มเปิดระบบนำทางไปยังจุดเกิดเหตุผ่าน Google Maps</li>
         </ul>
 
         <pre><code><span class="comment">// กำหนดจุดศูนย์กลางแผนที่และระดับการซูม</span>
@@ -272,14 +303,51 @@
 };
 <span class="keyword">const</span> layerControl = L.control.<span class="function">layers</span>(baseMaps, overlayMaps).<span class="function">addTo</span>(map);</code></pre>
 
-        <h2><span class="step-badge">7</span>การวิเคราะห์ข้อมูลเชิงพื้นที่ (Spatial Analysis) ด้วย Turf.js</h2>
+<h2><span class="step-badge">7</span>ระบบแจ้งเตือนอัจฉริยะ (Toast Notification System)</h2>
+        <p>เพื่อประสบการณ์ใช้งานที่ดี (UX) ระบบ MAPS11 ได้พัฒนากลไกแจ้งเตือนแบบ Non-blocking UI ที่จะแสดงข้อความสถานะต่างๆ ลอยขึ้นมาที่มุมขวาบนของหน้าจอโดยไม่ขัดจังหวะการทำงานของเจ้าหน้าที่และจะจางหายไปเองโดยอัตโนมัติ</p>
+        
+        <ul class="custom-list">
+            <li><strong>การแบ่งระดับความสำคัญ (Severity Levels):</strong> ระบบรองรับการแสดงผล 4 ระดับ ได้แก่ Success (สีเขียว) สำเร็จ Error (สีแดง) ผิดพลาด/ฉุกเฉิน Warning (สีเหลือง) เฝ้าระวัง และ Info (สีฟ้า) แจ้งสถานะทั่วไป</li>
+            <li><strong>การจัดการหน่วยความจำ (DOM Management):</strong> ทุกครั้งที่มีการแจ้งเตือนฟังก์ชันจะสร้าง DOM Element ใหม่ขึ้นมาและใช้ <code>setTimeout</code> ลบองค์ประกอบนั้นทิ้งไปหลังจากผ่านไป 3.3 วินาทีเพื่อป้องกันไม่ให้หน้าเว็บสะสมข้อมูลขยะ</li>
+            <li><strong>การแสดงผลซ้อนทับ (Stacking):</strong> โครงสร้าง CSS แบบ Flexbox ใน <code>#toast-container</code> ช่วยให้ระบบสามารถแสดงข้อความแจ้งเตือนหลายรายการพร้อมกันได้โดยจะเรียงต่อกันลงมาอย่างเป็นระเบียบ</li>
+        </ul>
+
+        <pre><code><span class="comment">// ฟังก์ชันหลักสำหรับเรียกใช้ Toast Notification</span>
+<span class="keyword">function</span> <span class="function">showToast</span>(message, type = <span class="string">'info'</span>) {
+    <span class="keyword">const</span> container = document.<span class="function">getElementById</span>(<span class="string">'toast-container'</span>);
+    <span class="keyword">if</span> (!container) <span class="keyword">return</span>;
+    
+    <span class="comment">// สร้างกล่องข้อความใหม่และใส่คลาสตามประเภท</span>
+    <span class="keyword">const</span> toast = document.<span class="function">createElement</span>(<span class="string">'div'</span>);
+    toast.className = <span class="string">`toast ${type}`</span>;
+    
+    <span class="comment">// กำหนดไอคอนตามประเภทการแจ้งเตือน</span>
+    <span class="keyword">let</span> icon = <span class="string">'ℹ️'</span>;
+    <span class="keyword">if</span> (type === <span class="string">'success'</span>) icon = <span class="string">'✅'</span>;
+    <span class="keyword">if</span> (type === <span class="string">'error'</span>) icon = <span class="string">'❌'</span>;
+    <span class="keyword">if</span> (type === <span class="string">'warning'</span>) icon = <span class="string">'⚠️'</span>;
+    
+    toast.innerHTML = <span class="string">`&lt;span style="margin-right:8px; font-size:16px;"&gt;${icon}&lt;/span&gt; ${message}`</span>;
+    container.<span class="function">appendChild</span>(toast);
+    
+    <span class="comment">// ตั้งเวลาให้ข้อความจางหายและลบตัวเองออกไป</span>
+    <span class="function">setTimeout</span>(() =&gt; {
+        toast.style.animation = <span class="string">'fadeOut 0.3s forwards'</span>;
+        <span class="function">setTimeout</span>(() =&gt; { toast.<span class="function">remove</span>(); }, <span class="variable">300</span>);
+    }, <span class="variable">3000</span>);
+}
+
+<span class="comment">// ตัวอย่างการเรียกใช้งานเมื่อโหลดข้อมูลสำเร็จ</span>
+<span class="function">showToast</span>(<span class="string">"ประมวลผลจุดความร้อนสำเร็จ"</span>, <span class="string">"success"</span>);</code></pre>
+
+        <h2><span class="step-badge">8</span>การวิเคราะห์ข้อมูลเชิงพื้นที่ (Spatial Analysis) ด้วย Turf.js</h2>
         <p>ระบบเรียกใช้ไลบรารี Turf.js เป็นเครื่องมือหลักในการวิเคราะห์และคำนวณข้อมูลเชิงพื้นที่ทางภูมิศาสตร์โดยมีขอบเขตการทำงานดังนี้</p>
         
         <ul class="custom-list">
-            <li><strong>การสร้างพิกัดและกล่องขอบเขต (Point &amp; Bounding Box):</strong> ใช้ <code>turf.point</code> ในการแปลงข้อมูลพิกัดละติจูดและลองจิจูดให้เป็นจุดอ้างอิงเชิงพื้นที่และใช้ <code>turf.bbox</code> สร้างกล่องกรอบสี่เหลี่ยมคลุมพื้นที่ขอบเขตจังหวัดเป้าหมายเพื่อนำไปใช้เป็นตัวคัดกรองข้อมูลจุดความร้อนในชุดแรก</li>
-            <li><strong>การตรวจสอบจุดตกกระทบในพื้นที่ (Point in Polygon):</strong> ใช้คำสั่ง <code>turf.booleanPointInPolygon</code> เพื่อตรวจสอบอย่างละเอียดว่าจุดความร้อนแต่ละจุดที่ได้จากดาวเทียมตกอยู่ภายในพื้นที่รูปหลายเหลี่ยม (Polygon) ของพื้นที่ความรับผิดชอบทั้ง 4 จังหวัดหรือไม่</li>
-            <li><strong>การคำนวณระยะทางเพื่อหาระยะอันตราย (Distance Calculation):</strong> ใช้คำสั่ง <code>turf.distance</code> วัดระยะห่างระหว่างจุดพิกัดสถานที่กำจัดขยะมูลฝอยแต่ละแห่งกับจุดความร้อนหากพบว่ามีจุดความร้อนเกิดขึ้นในระยะไม่เกิน 0.5 กิโลเมตรจากบ่อขยะระบบจะทริกเกอร์การแจ้งเตือนพื้นที่เสี่ยงภัยฉุกเฉินบนหน้าจอทันที</li>
-            <li><strong>การคำนวณพิกัดท้ายลมเพื่อวาดแนวควันไฟ (Destination &amp; Plume Generation):</strong> ใช้คำสั่ง <code>turf.destination</code> ยิงพิกัดจำลองออกไปจากจุดเกิดเหตุตามองศาของทิศทางลมเพื่อหาพิกัดปลายทางที่ระยะ 2.5 กิโลเมตรและ 5 กิโลเมตรจากนั้นนำพิกัดที่ได้ไปค้นหาชื่อชุมชนท้ายลมนอกจากนี้ยังใช้คำสั่งเดียวกันนี้สร้างจุดขอบซ้ายและขวาเพื่อประกอบร่างเป็นรูปทรงกรวยจำลองทิศทางการแพร่กระจายของควันไฟบนแผนที่</li>
+            <li><strong>การสร้างพิกัดและกล่องขอบเขต (Point &amp; Bounding Box):</strong> ใช้ <code>turf.point</code> แปลงข้อมูลพิกัดละติจูดและลองจิจูดให้เป็นจุดอ้างอิงเชิงพื้นที่และใช้ <code>turf.bbox</code> สร้างกล่องกรอบสี่เหลี่ยมคลุมพื้นที่เพื่อนำไปใช้คัดกรองข้อมูลจุดความร้อนในชุดแรก</li>
+            <li><strong>การตรวจสอบจุดตกกระทบในพื้นที่ (Point in Polygon):</strong> ใช้คำสั่ง <code>turf.booleanPointInPolygon</code> เพื่อตรวจสอบอย่างละเอียดว่าจุดความร้อนตกอยู่ภายในพื้นที่รูปหลายเหลี่ยมของ 4 จังหวัดเป้าหมายหรือไม่</li>
+            <li><strong>การคำนวณระยะทางเพื่อหาระยะอันตราย (Distance Calculation):</strong> ใช้คำสั่ง <code>turf.distance</code> วัดระยะห่างระหว่างจุดพิกัดสถานที่กำจัดขยะกับจุดความร้อนเพื่อทริกเกอร์การแจ้งเตือนพื้นที่เสี่ยงภัยฉุกเฉิน</li>
+            <li><strong>การคำนวณพิกัดท้ายลมเพื่อวาดแนวควันไฟ (Destination &amp; Plume Generation):</strong> ใช้คำสั่ง <code>turf.destination</code> ยิงพิกัดจำลองออกไปจากจุดเกิดเหตุตามองศาของทิศทางลมเพื่อหาพิกัดปลายทางที่ระยะ 2.5 กิโลเมตรและ 5 กิโลเมตรเพื่อระบุชื่อชุมชนท้ายลมรวมถึงสร้างจุดขอบซ้ายและขวาประกอบร่างเป็นรูปทรงกรวยจำลองแนวควัน</li>
         </ul>
 
         <pre><code><span class="comment">// 1. การสร้างจุดและ Bounding Box</span>
@@ -296,12 +364,12 @@ boundaryGeoJSON.features.<span class="function">forEach</span>(f =&gt; f.bbox = 
 <span class="keyword">const</span> leftPt = turf.<span class="function">destination</span>([lon, lat], distance, leftBearing, {units: <span class="string">'kilometers'</span>}).geometry.coordinates;
 <span class="keyword">const</span> rightPt = turf.<span class="function">destination</span>([lon, lat], distance, rightBearing, {units: <span class="string">'kilometers'</span>}).geometry.coordinates;</code></pre>
 
-        <h2><span class="step-badge">8</span>ระบบเบื้องหลังและ API (Backend &amp; API) ด้วย Google Apps Script</h2>
+        <h2><span class="step-badge">9</span>ระบบเบื้องหลังและ API (Backend &amp; API) ด้วย Google Apps Script</h2>
         <p>ระบบใช้ Google Apps Script (GAS) ทำหน้าที่เป็นเซิร์ฟเวอร์แบบไร้เซิร์ฟเวอร์ (Serverless) เพื่อจัดการข้อมูลก่อนส่งให้แอปพลิเคชันหน้าบ้านแสดงผล</p>
         <ul class="custom-list">
-            <li><strong>ดึงข้อมูลดาวเทียม NASA:</strong> เป็นตัวกลางเชื่อมต่อ API ของ NASA FIRMS เพื่อนำข้อมูลจุดความร้อนมาแปลงเป็น JSON ที่ระบบหน้าบ้านอ่านและนำไปสร้างพิกัดได้รวดเร็วขึ้น</li>
-            <li><strong>ฐานข้อมูลสถานที่กำจัดขยะ:</strong> เชื่อมต่อกับ Google Sheets ที่ใช้เก็บข้อมูลบ่อขยะในพื้นที่เพื่อแปลงข้อมูลพิกัดและสถานะเป็น API ส่งกลับมาวาดเป็นหมุดบนแผนที่</li>
-            <li><strong>ระบบซิงค์ข้อมูลฉุกเฉิน (Force Sync):</strong> รับคำสั่งจากหน้าเว็บเพื่อสั่งให้เซิร์ฟเวอร์ดึงข้อมูลจุดความร้อนชุดใหม่ล่าสุดจากอวกาศทันทีโดยไม่ต้องรอรอบเวลาการประมวลผลปกติ</li>
+            <li><strong>ดึงข้อมูลดาวเทียม NASA:</strong> เป็นตัวกลางเชื่อมต่อ API ของ NASA FIRMS เพื่อนำข้อมูลมาแปลงเป็น JSON ที่หน้าบ้านอ่านและนำไปสร้างพิกัดได้รวดเร็วขึ้น</li>
+            <li><strong>ฐานข้อมูลสถานที่กำจัดขยะ:</strong> เชื่อมต่อกับ Google Sheets ที่เก็บข้อมูลบ่อขยะเพื่อแปลงข้อมูลพิกัดและสถานะเป็น API ส่งกลับมาวาดเป็นหมุดบนแผนที่</li>
+            <li><strong>ระบบซิงค์ข้อมูลฉุกเฉิน (Force Sync):</strong> รับคำสั่งจากหน้าเว็บเพื่อสั่งให้เซิร์ฟเวอร์ดึงข้อมูลจุดความร้อนชุดใหม่ล่าสุดทันทีโดยไม่ต้องรอรอบประมวลผลปกติ</li>
         </ul>
 
         <pre><code><span class="comment">// ตัวอย่างการเรียกใช้ GAS เป็น Backend API ภายในระบบ</span>
@@ -322,6 +390,56 @@ boundaryGeoJSON.features.<span class="function">forEach</span>(f =&gt; f.bbox = 
         <span class="comment">// โหลดข้อมูลชุดใหม่ลงบนแผนที่โดยอัตโนมัติ</span>
     });</code></pre>
 
-    </div>
+        <h2><span class="step-badge">10</span>ระบบแคชและฐานข้อมูลชั่วคราว (Data Caching &amp; Storage)</h2>
+        <p>เพื่อลดความหน่วงในการโหลดข้อมูลจาก API ภายนอกและป้องกันข้อจำกัดด้านการเรียกใช้งานระบบจะใช้ Google Sheets เป็นเสมือนฐานข้อมูลชั่วคราวโดยเก็บข้อมูลจุดความร้อนที่ผ่านการคัดกรองแล้วไว้ในชีต Hotspot_Map และเก็บสถิติคุณภาพอากาศไว้ในชีตข้อมูลรายวัน</p>
+        <pre><code><span class="keyword">function</span> <span class="function">getCachedHotspots</span>() {
+    <span class="keyword">var</span> sheet = SpreadsheetApp.<span class="function">getActiveSpreadsheet</span>().<span class="function">getSheetByName</span>(HOTSPOT_SHEET);
+    <span class="keyword">var</span> counts = { <span class="string">"นครราชสีมา"</span>: <span class="variable">0</span>, <span class="string">"ชัยภูมิ"</span>: <span class="variable">0</span>, <span class="string">"บุรีรัมย์"</span>: <span class="variable">0</span>, <span class="string">"สุรินทร์"</span>: <span class="variable">0</span> };
+    <span class="keyword">var</span> points = [];
+    
+    <span class="comment">// อ่านข้อมูลจากแคชเพื่อส่งให้หน้าเว็บทันที</span>
+    <span class="keyword">if</span> (sheet) {
+        <span class="keyword">var</span> data = sheet.<span class="function">getDataRange</span>().<span class="function">getValues</span>();
+        <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="variable">1</span>; i &lt; data.length; i++) {
+            <span class="keyword">var</span> prov = data[i][<span class="variable">2</span>];
+            <span class="keyword">if</span> (prov &amp;&amp; counts[prov] !== <span class="keyword">undefined</span>) {
+                counts[prov]++;
+                points.<span class="function">push</span>({ lat: data[i][<span class="variable">0</span>], lon: data[i][<span class="variable">1</span>], prov: prov <span class="comment">/* ข้อมูลอื่นๆ */</span> });
+            }
+        }
+    }
+    <span class="keyword">return</span> ContentService.<span class="function">createTextOutput</span>(JSON.<span class="function">stringify</span>({ counts: counts, points: points })).<span class="function">setMimeType</span>(ContentService.MimeType.JSON);
+}</code></pre>
+
+        <h2><span class="step-badge">11</span>อัลกอริทึมคัดกรองขอบเขตระดับเซิร์ฟเวอร์ (Server-Side Ray-Casting)</h2>
+        <p>นอกจากตรวจจับบนหน้าเว็บแล้วระบบหลังบ้านยังมีอัลกอริทึมสำหรับตรวจพิกัด (Point in Polygon) เพื่อกรองเฉพาะจุดความร้อนที่อยู่ในขอบเขตพื้นที่รับผิดชอบก่อนบันทึกลงฐานข้อมูลช่วยลดปริมาณข้อมูลขยะและเพิ่มความเร็วในการตอบสนอง</p>
+        <pre><code><span class="keyword">function</span> <span class="function">isPointInPolygon</span>(pt, ring) {
+    <span class="keyword">var</span> inside = <span class="keyword">false</span>;
+    <span class="keyword">for</span> (<span class="keyword">var</span> i = <span class="variable">0</span>, j = ring.length - <span class="variable">1</span>; i &lt; ring.length; j = i++) {
+        <span class="keyword">if</span> (((ring[i][<span class="variable">1</span>] &gt; pt[<span class="variable">1</span>]) != (ring[j][<span class="variable">1</span>] &gt; pt[<span class="variable">1</span>])) &amp;&amp; 
+            (pt[<span class="variable">0</span>] &lt; (ring[j][<span class="variable">0</span>] - ring[i][<span class="variable">0</span>]) * (pt[<span class="variable">1</span>] - ring[i][<span class="variable">1</span>]) / (ring[j][<span class="variable">1</span>] - ring[i][<span class="variable">1</span>]) + ring[i][<span class="variable">0</span>])) {
+            inside = !inside;
+        }
+    }
+    <span class="keyword">return</span> inside;
+}</code></pre>
+
+        <h2><span class="step-badge">12</span>การประมวลผลอัตโนมัติตามรอบเวลา (Time-Driven Triggers)</h2>
+        <p>ระบบกำหนดเวลาจะสั่งรันสคริปต์แบบอัตโนมัติตามช่วงเวลาที่กำหนดเช่นการดึงข้อมูล NASA ล่วงหน้าในรอบเช้าและเย็นและการสรุปยอดเพื่อบันทึกลงรายงานสถิติประจำวัน</p>
+        <pre><code><span class="keyword">function</span> <span class="function">setupDailyTriggers</span>() {
+    <span class="comment">// ล้างรอบเวลาเดิมเพื่อป้องกันการทำงานซ้ำซ้อน</span>
+    <span class="keyword">var</span> triggers = ScriptApp.<span class="function">getProjectTriggers</span>();
+    triggers.<span class="function">forEach</span>(t =&gt; ScriptApp.<span class="function">deleteTrigger</span>(t));
+
+    <span class="comment">// 1. ดึงข้อมูล NASA รอบเช้า (07:15) และรอบเย็น (17:15)</span>
+    [<span class="variable">7</span>, <span class="variable">17</span>].<span class="function">forEach</span>(h =&gt; {
+        ScriptApp.<span class="function">newTrigger</span>(<span class="string">'fetchAndCacheNasaHotspots'</span>).<span class="function">timeBased</span>().<span class="function">atHour</span>(h).<span class="function">nearMinute</span>(<span class="variable">15</span>).<span class="function">everyDays</span>(<span class="variable">1</span>).<span class="function">create</span>();
+    });
+
+    <span class="comment">// 2. อัปเดตสถิติ PM2.5 และจุดความร้อนรายวัน (07:45)</span>
+    ScriptApp.<span class="function">newTrigger</span>(<span class="string">'updateDailyPM25'</span>).<span class="function">timeBased</span>().<span class="function">atHour</span>(<span class="variable">7</span>).<span class="function">nearMinute</span>(<span class="variable">45</span>).<span class="function">everyDays</span>(<span class="variable">1</span>).<span class="function">create</span>();
+}</code></pre>
+
+
 </body>
 </html>
