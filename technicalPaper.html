@@ -440,6 +440,54 @@ boundaryGeoJSON.features.<span class="function">forEach</span>(f =&gt; f.bbox = 
     ScriptApp.<span class="function">newTrigger</span>(<span class="string">'updateDailyPM25'</span>).<span class="function">timeBased</span>().<span class="function">atHour</span>(<span class="variable">7</span>).<span class="function">nearMinute</span>(<span class="variable">45</span>).<span class="function">everyDays</span>(<span class="variable">1</span>).<span class="function">create</span>();
 }</code></pre>
 
+<h2><span class="step-badge">13</span>แหล่งข้อมูลที่ใช้ในระบบ (Data Sources)</h2>
+        <p>ระบบ MAPS11 มีการเชื่อมโยงและบูรณาการฐานข้อมูลจากหลายแหล่งเพื่อให้การประเมินความเสี่ยงและการเฝ้าระวังไฟไหม้บ่อขยะเป็นไปอย่างแม่นยำ</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <img src="https://camo.githubusercontent.com/8f81ffac62312e087d2a20f7c78aa97808068db9d67bc801e1264fce5d8411d1/68747470733a2f2f6b69657470617770616e2e6769746875622e696f2f6d61707331312f494d475f353938312e6a706567" alt="ภาพรวมระบบ MAPS 11" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <p style="font-size: 14px; color: #64748b; margin-top: 10px;">ภาพรวมการแสดงผลบนอุปกรณ์เคลื่อนที่ของระบบ MAPS 11</p>
+        </div>
 
+        <ul class="custom-list">
+            <li><strong>ข้อมูลจุดความร้อน (NASA FIRMS):</strong> ข้อมูลเชิงพื้นที่จากเซนเซอร์ VIIRS ผ่าน API ของ NASA ประกอบด้วยพิกัด วันที่ เวลา และระดับความเชื่อมั่น</li>
+            <li><strong>ข้อมูลสถานที่กำจัดขยะมูลฝอย:</strong> ฐานข้อมูลบ่อขยะในพื้นที่จัดเก็บผ่าน Google Sheets ประกอบด้วยพิกัดที่ตั้ง ขนาดพื้นที่ ปริมาณขยะ และสถานะการดำเนินงาน</li>
+            <li><strong>ข้อมูลสภาพอากาศ (Open-Meteo API):</strong> ข้อมูลทิศทางลมและความเร็วลมแบบเรียลไทม์ ณ จุดเกิดเหตุเพื่อใช้สร้างแบบจำลองพื้นที่ท้ายลม</li>
+            <li><strong>ข้อมูลพิกัดที่อยู่ (Longdo Map API):</strong> ใช้สำหรับแปลงพิกัดภูมิศาสตร์เป็นชื่อตำบล อำเภอ และจังหวัด เพื่อระบุพื้นที่ที่ได้รับผลกระทบ</li>
+            <li><strong>ข้อมูลภูมิสารสนเทศ (GeoJSON):</strong> แฟ้มข้อมูลขอบเขตการปกครองระดับจังหวัดเพื่อใช้คัดกรองจุดความร้อนให้ตรงกับพื้นที่รับผิดชอบ</li>
+            <li><strong>ข้อมูลคุณภาพอากาศ (Air4Thai):</strong> ข้อมูล PM25 จากสถานีตรวจวัดของกรมควบคุมมลพิษเพื่อบันทึกลงรายงานสรุปประจำวัน</li>
+        </ul>
+
+<h2><span class="step-badge">14</span>แนวทางการพัฒนาต่อยอด: ระบบเตือนภัยเฝ้าระวังน้ำท่วมสถานที่กำจัดขยะมูลฝอย</h2>
+        <p>นอกจากการเฝ้าระวังไฟไหม้และมลพิษทางอากาศแล้ว ระบบ MAPS 11 สามารถยกระดับเป็นศูนย์กลางการบริหารจัดการภัยพิบัติด้านสิ่งแวดล้อมที่ครอบคลุมยิ่งขึ้น โดยเฉพาะการพัฒนาระบบเฝ้าระวังน้ำท่วมบ่อขยะ การออกแบบระบบเตือนภัยน้ำท่วมล่วงหน้า (Early Warning System) จำเป็นต้องบูรณาการปัจจัยเชิงพื้นที่และอุตุนิยมวิทยามาประมวลผลร่วมกันดังนี้</p>
+        
+        <ul class="custom-list">
+            <li><strong>1. การวิเคราะห์ปริมาณฝนตกสะสม (Precipitation Analysis):</strong> ดึงข้อมูลพยากรณ์อากาศและปริมาณฝนสะสมจาก API ของกรมอุตุนิยมวิทยาหรือ Open-Meteo มาคำนวณร่วมกับพิกัดบ่อขยะ หากพบปริมาณฝนตกหนักต่อเนื่องเกินเกณฑ์มาตรฐานระบบจะแจ้งเตือนความเสี่ยงล่วงหน้า</li>
+            <li><strong>2. การประเมินพื้นที่ลุ่มต่ำด้วยแบบจำลองระดับความสูง (DEM):</strong> นำเข้าข้อมูล Digital Elevation Model เพื่อวิเคราะห์ความลาดชันและทิศทางการไหลของน้ำ (Flow Direction) ช่วยระบุสถานที่กำจัดขยะที่ตั้งอยู่ในจุดรับน้ำหรือพื้นที่ลุ่มต่ำที่เสี่ยงต่อการถูกน้ำท่วมขัง</li>
+            <li><strong>3. การเฝ้าระวังระดับน้ำในแหล่งน้ำสาธารณะ (Hydrological Monitoring):</strong> เชื่อมโยงข้อมูลมาตรวัดระดับน้ำจาก สสน. หรือกรมชลประทาน เพื่อติดตามสถานการณ์แม่น้ำและลำคลองสายหลักที่อยู่ใกล้เคียงบ่อขยะ หากระดับน้ำเริ่มล้นตลิ่งระบบจะแสดงรัศมีแจ้งเตือนภัยบนแผนที่อัตโนมัติ</li>
+            <li><strong>4. การซ้อนทับแผนที่พื้นที่เสี่ยงอุทกภัย (Flood Hazard Mapping):</strong> นำเข้าชั้นข้อมูลแผนที่พื้นที่เสี่ยงอุทกภัยซ้ำซากจาก GISTDA มาแสดงผลซ้อนทับ (Overlay) กับหมุดสถานที่กำจัดขยะมูลฝอย เพื่อแบ่งเกณฑ์ระดับความรุนแรงของความเสี่ยงในแต่ละพื้นที่</li>
+            <li><strong>5. ปัจจัยด้านโครงสร้างและรูปแบบการกำจัดขยะ (Site Infrastructure):</strong> เพิ่มข้อมูลคุณลักษณะของบ่อขยะในฐานข้อมูล Google Sheets เช่น ระดับความสูงของคันดินกั้นน้ำ ความจุของบ่อบำบัดน้ำชะขยะ และประสิทธิภาพของระบบระบายน้ำ เพื่อนำมาถ่วงน้ำหนักในการคำนวณดัชนีความเสี่ยงน้ำท่วม</li>
+        </ul>
+
+        <pre><code><span class="comment">// ตัวอย่างแนวคิดอัลกอริทึมประเมินความเสี่ยงน้ำท่วมบ่อขยะจากพยากรณ์ฝนสะสมล่วงหน้า 3 วัน</span>
+<span class="keyword">function</span> <span class="function">evaluateFloodRisk</span>(lat, lon, siteName) {
+    <span class="comment">// เรียกใช้ Open-Meteo API เพื่อดึงพยากรณ์ปริมาณฝนรายวัน (มิลลิเมตร)</span>
+    <span class="keyword">const</span> weatherApiUrl = <span class="string">`https://api.open-meteo.com/v1/forecast?latitude=${lat}&amp;longitude=${lon}&amp;daily=precipitation_sum`</span>;
+    
+    <span class="function">fetch</span>(weatherApiUrl)
+        .<span class="function">then</span>(res =&gt; res.<span class="function">json</span>())
+        .<span class="function">then</span>(data =&gt; {
+            <span class="keyword">let</span> totalRain = <span class="variable">0</span>;
+            <span class="comment">// คำนวณยอดรวมปริมาณฝนพยากรณ์ 3 วันข้างหน้า</span>
+            <span class="keyword">for</span> (<span class="keyword">let</span> i = <span class="variable">0</span>; i &lt; <span class="variable">3</span>; i++) {
+                totalRain += data.daily.precipitation_sum[i];
+            }
+            
+            <span class="comment">// กำหนดเกณฑ์แจ้งเตือนภัย (เช่น ฝนสะสม 3 วัน มากกว่า 90 มม.)</span>
+            <span class="keyword">if</span> (totalRain &gt; <span class="variable">90</span>) {
+                <span class="function">showToast</span>(<span class="string">`⚠️ แจ้งเตือนความเสี่ยง: บ่อขยะ ${siteName} มีแนวโน้มรับฝนสะสม ${totalRain} มม. เสี่ยงน้ำท่วมขัง`</span>, <span class="string">"warning"</span>);
+                <span class="comment">// สามารถสั่งให้วาดวงกลมแจ้งเตือนสีน้ำเงินบนแผนที่แบบเดียวกับการเตือนไฟไหม้ได้</span>
+            }
+        });
+}</code></pre>
 </body>
 </html>
