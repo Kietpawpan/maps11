@@ -698,6 +698,7 @@
                     popupContent += "<b>เวลา:</b> " + timeDisplay + " (เวลาประเทศไทย)<br>";
                     popupContent += "<b>ดาวเทียม:</b> " + satDisplay + "<br>";
                     popupContent += "<b>ความเชื่อมั่น:</b> " + confDisplay + "<br>";
+                    popupContent += "<b>ความสูง:</b> <span class='elev-val' style='color:#059669; font-weight:bold;'>กำลังโหลด...</span><br>";
                     
                     popupContent += "<div style='background-color:#f8fafc; padding:8px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px; margin-bottom:8px;'>";
                     popupContent += "<div style='color:#475569; font-weight:bold; margin-bottom:4px; font-size:13px;'>💨 สภาพลม ณ จุดความร้อน</div>";
@@ -831,6 +832,21 @@
                                 windSpeedEl.innerText = "ข้อผิดพลาด";
                                 if (downwindEl) downwindEl.innerHTML = "เครือข่ายขัดข้อง";
                             });
+                        }
+
+                        let elevEl = popupNode.querySelector('.elev-val');
+                        if (elevEl && elevEl.innerText === 'กำลังโหลด...') {
+                            fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data && data.elevation && data.elevation.length > 0) {
+                                        elevEl.innerText = parseFloat(data.elevation[0]).toFixed(2) + " เมตร (MSL)";
+                                    } else {
+                                        elevEl.innerText = "ไม่พบข้อมูล";
+                                    }
+                                }).catch(() => {
+                                    elevEl.innerText = "ขัดข้อง";
+                                });
                         }
                     });
                 }
@@ -1203,6 +1219,7 @@
                                     <b>ปีเปิด:</b> ${yearStart}<br>
                                     <b>สถานะ:</b> ${siteStatus}<br>
                                     <b>ปริมาณขยะ:</b> ${wasteAmount} ตัน/วัน<br>
+                                    <b>ความสูงพื้นที่:</b> <span id="${siteId}-elev" style='font-weight:bold; color:#059669;'>กำลังโหลด...</span><br>
                                     
                                     <div style='background-color:#eff6ff; padding:8px; border:1px solid #bfdbfe; border-radius:6px; margin-top:10px; margin-bottom:10px;'>
                                         <div style='color:#1e3a8a; font-weight:bold; margin-bottom:4px; font-size:13px;'>🌊 วิเคราะห์ประวัติน้ำท่วมซ้ำซาก (GISTDA)</div>
@@ -1222,6 +1239,10 @@
 
                                         fetch(floodApiUrl)
                                             .then(async res => {
+                                                const contentType = res.headers.get("content-type");
+                                                if (!contentType || !contentType.includes("application/json")) {
+                                                    throw new Error("Invalid JSON");
+                                                }
                                                 if (!res.ok) {
                                                     const errText = await res.text();
                                                     throw new Error(`Error ${res.status}: ${errText}`);
@@ -1232,9 +1253,8 @@
                                                 let floodInfo = responseData.flood || (responseData.data && responseData.data.flood);
 
                                                 if (floodInfo && floodInfo.data && floodInfo.data.length > 0) {
-                                         // เปลี่ยนให้คั่นด้วยลูกน้ำ และนับจำนวนจากความยาวของข้อมูลปีที่ส่งมาโดยตรง
-let floodYears = floodInfo.data.map(item => item.year).join(', ');
-let totalFreq = floodInfo.data.length;
+                                                    let floodYears = floodInfo.data.map(item => item.year).join(', ');
+                                                    let totalFreq = floodInfo.data.length;
                                                     
                                                     infoSpan.innerHTML = `<span style="color:#b91c1c; font-weight:bold;">⚠️ พื้นที่น้ำท่วมซ้ำซาก (รวม ${totalFreq} ครั้ง)<br>ปีที่เกิด: ${floodYears}</span>`;
                                                 } else {
@@ -1243,7 +1263,22 @@ let totalFreq = floodInfo.data.length;
                                             })
                                             .catch(err => {
                                                 console.error("GISTDA API Error:", err);
-                                                infoSpan.innerHTML = `<span style="color:#dc2626; font-size:12px;">ขัดข้อง: ${err.message}</span>`;
+                                                infoSpan.innerHTML = `<span style="color:#dc2626; font-size:12px;">ขัดข้อง: ไม่สามารถดึงข้อมูลได้</span>`;
+                                            });
+                                    }
+
+                                    let elevSpan = document.getElementById(`${siteId}-elev`);
+                                    if (elevSpan && elevSpan.innerText.includes('กำลังโหลด')) {
+                                        fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`)
+                                            .then(res => res.json())
+                                            .then(data => {
+                                                if (data && data.elevation && data.elevation.length > 0) {
+                                                    elevSpan.innerText = parseFloat(data.elevation[0]).toFixed(2) + " เมตร (MSL)";
+                                                } else {
+                                                    elevSpan.innerText = "ไม่พบข้อมูล";
+                                                }
+                                            }).catch(() => {
+                                                elevSpan.innerText = "ขัดข้อง";
                                             });
                                     }
                                 });
@@ -1448,6 +1483,7 @@ let totalFreq = floodInfo.data.length;
                     <b>จังหวัด:</b> <span id="inc-province" style="color:#0284c7; font-weight:bold;">กำลังค้นหา...</span><br>
                     <b>พิกัด:</b> ${lat.toFixed(5)}  ${lon.toFixed(5)}<br>
                     <b>เวลาที่รายงาน:</b> ${dateStr} ${timeStr}<br>
+                    <b>ความสูงพื้นที่:</b> <span id="inc-elev" style="color:#059669; font-weight:bold;">กำลังโหลด...</span><br>
                     
                     <div style='background-color:#f8fafc; padding:8px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px;'>
                         <div style='color:#475569; font-weight:bold; margin-bottom:4px; font-size:13px;'>💨 สภาพลม ณ จุดเกิดเหตุ</div>
@@ -1459,7 +1495,7 @@ let totalFreq = floodInfo.data.length;
                         </div>
                     </div>
                     <br>
-                    <a href="https://www.google.com/maps?q=$${lat},${lon}" target="_blank" style='display:block; text-align:center; background-color:#16a34a; color:white; padding:8px 0; border-radius:6px; text-decoration:none; font-weight:bold;'>📍 เปิด Google Maps</a>
+                    <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" style='display:block; text-align:center; background-color:#16a34a; color:white; padding:8px 0; border-radius:6px; text-decoration:none; font-weight:bold;'>📍 เปิด Google Maps</a>
                 </div>
             `;
 
@@ -1497,6 +1533,20 @@ let totalFreq = floodInfo.data.length;
                     drawPlumeAndCalculateRisk(lat, lon, currentIncidentData.windDir, currentWindSpeed);
                 }
             });
+
+            fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lon}`)
+                .then(res => res.json())
+                .then(data => {
+                    let elevEl = document.getElementById('inc-elev');
+                    if (elevEl && data && data.elevation && data.elevation.length > 0) {
+                        elevEl.innerText = parseFloat(data.elevation[0]).toFixed(2) + " เมตร (MSL)";
+                    } else if (elevEl) {
+                        elevEl.innerText = "ไม่พบข้อมูล";
+                    }
+                }).catch(() => {
+                    let elevEl = document.getElementById('inc-elev');
+                    if (elevEl) elevEl.innerText = "ขัดข้อง";
+                });
         }
 
         async function drawPlumeAndCalculateRisk(lat, lon, dir, speed) {
@@ -1569,12 +1619,15 @@ let totalFreq = floodInfo.data.length;
         map.on('click', function(e) {
             let clickLat = e.latlng.lat.toFixed(5);
             let clickLon = e.latlng.lng.toFixed(5);
+            let elevId = 'elev-' + Math.round(Math.random() * 100000);
+            
             let popupContent = `<div style='text-align:center; font-size:14px;'>
-            <b>📍 พิกัดที่เลือก</b><br>
-            Lat: <span style='color:#e11d48; font-weight:bold;'>${clickLat}</span><br>
-            Lon: <span style='color:#e11d48; font-weight:bold;'>${clickLon}</span><br>
-            <a href="https://www.google.com/maps/search/?api=1&query=$${clickLat},${clickLon}" target="_blank" style="display:block; text-align:center; background-color:#3b82f6; color:white; padding:8px 0; border-radius:6px; text-decoration:none; font-weight:bold; margin-top:10px;">🔍 เปิดดูพื้นที่บน Google Maps</a>
-        </div>`;
+                <b>📍 พิกัดที่เลือก</b><br>
+                Lat: <span style='color:#e11d48; font-weight:bold;'>${clickLat}</span><br>
+                Lon: <span style='color:#e11d48; font-weight:bold;'>${clickLon}</span><br>
+                <b>ความสูง:</b> <span id='${elevId}' style='color:#059669; font-weight:bold;'>กำลังโหลด...</span><br>
+                <a href="https://www.google.com/maps/search/?api=1&query=${clickLat},${clickLon}" target="_blank" style="display:block; text-align:center; background-color:#3b82f6; color:white; padding:8px 0; border-radius:6px; text-decoration:none; font-weight:bold; margin-top:10px;">🔍 เปิดดูพื้นที่บน Google Maps</a>
+            </div>`;
 
             L.popup()
                 .setLatLng(e.latlng)
@@ -1589,6 +1642,20 @@ let totalFreq = floodInfo.data.length;
                 lonInputEl.value = clickLon;
                 showToast("ดึงพิกัดลงช่องเกิดเหตุด่วนเรียบร้อยแล้ว", "success");
             }
+
+            fetch(`https://api.open-meteo.com/v1/elevation?latitude=${clickLat}&longitude=${clickLon}`)
+                .then(res => res.json())
+                .then(data => {
+                    let elevEl = document.getElementById(elevId);
+                    if (elevEl && data && data.elevation && data.elevation.length > 0) {
+                        elevEl.innerText = parseFloat(data.elevation[0]).toFixed(2) + " เมตร (MSL)";
+                    } else if (elevEl) {
+                        elevEl.innerText = "ไม่พบข้อมูล";
+                    }
+                }).catch(() => {
+                    let elevEl = document.getElementById(elevId);
+                    if (elevEl) elevEl.innerText = "ขัดข้อง";
+                });
         });
 
         const statusTexts = [
@@ -1632,6 +1699,10 @@ let totalFreq = floodInfo.data.length;
                 
                 try {
                     let res = await fetch(floodApiUrl);
+                    const contentType = res.headers.get("content-type");
+                    if (!contentType || !contentType.includes("application/json")) {
+                        throw new Error("Invalid JSON");
+                    }
                     if (res.ok) {
                         let responseData = await res.json();
                         let floodInfo = responseData.flood || (responseData.data && responseData.data.flood);
