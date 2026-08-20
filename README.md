@@ -35,12 +35,6 @@
 *   **Backend Data:** การดึงข้อมูลจุดความร้อนและบ่อขยะ ดำเนินการผ่าน URL ของ Google Apps Script (`gasWebappUrl` และ `wasteGasUrl`) 
 *   **Password Hash:** รหัสผ่านสำหรับดาวน์โหลดไฟล์ Excel ถูกเข้ารหัสด้วย SHA3 (512-bit) หากต้องการเปลี่ยนรหัสผ่าน ต้องสร้างค่า Hash ใหม่แล้วนำมาแทนที่ในตัวแปร `TARGET_HASH`
 
-## 👨‍💼 ผู้พัฒนาและดูแลระบบ
-
-**มนตรี เกียรติเผ่าพันธ์**
-ผู้อำนวยการสำนักงานสิ่งแวดล้อมและควบคุมมลพิษที่ 11
-กรมควบคุมมลพิษ กระทรวงทรัพยากรธรรมชาติและสิ่งแวดล้อม
-
 ## 📕 เอกสารเชิงเทคนิค
  *  **Technical document:** [Key components](https://kietpawpan.github.io/maps11/technicalPaper) (อัลกอริทึมการทำงานของระบบ MAPS11)
  * **Developer Guide:** [Architecture](https://kietpawpan.github.io/maps11/developer) (คู่มือนักพัฒนา MAPS11)
