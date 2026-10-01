@@ -1634,9 +1634,15 @@
             btn.disabled = true;
             btn.innerHTML = "⏳ กำลังโหลด...";
 
-            const apiUrl = `https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/${period}`;
+            const targetUrl = `https://api-gateway.gistda.or.th/api/2.0/resources/features/flood/${period}`;
+            const apiKey = "YWPkxv32RzRz6l401649dR5H0JFW7HcVzKIC5ZIx34clS9T0ayVY2C0Zym71r31p";
 
-            fetch(apiUrl)
+            fetch(targetUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + apiKey
+                }
+            })
                 .then(res => {
                     if (!res.ok) throw new Error("API response not ok");
                     return res.json();
@@ -1675,7 +1681,7 @@
                 })
                 .catch(err => {
                     console.error(err);
-                    showToast("ไม่สามารถดึงข้อมูลจาก GISTDA ได้ (อาจติด CORS หรือต้องใช้ Auth)", "error");
+                    showToast("ไม่สามารถดึงข้อมูลจาก GISTDA ได้ กรุณาตรวจสอบสิทธิ์ของ API Key หรือปัญหาเรื่อง CORS", "error");
                 })
                 .finally(() => {
                     btn.disabled = false;
@@ -1683,6 +1689,7 @@
                 });
         });
 
+      
         document.getElementById('clearFloodBtn').addEventListener('click', function() {
             if (currentFloodLayer) {
                 map.removeLayer(currentFloodLayer);
